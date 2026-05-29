@@ -19,21 +19,35 @@ function App() {
   }, []);
 
   // Load weather + history whenever the selected city changes
+// Load weather + history when city changes, and auto-refresh every 60 seconds
   useEffect(() => {
     if (!selectedCity) return;
-    setLoading(true);
-    Promise.all([getWeather(selectedCity), getHistory(selectedCity)])
-      .then(([w, h]) => {
-        setWeather(w);
-        setHistory(
-          h.map((row) => ({
-            time: new Date(row.recorded_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            temperature: row.temperature,
-            humidity: row.humidity,
-          }))
-        );
-      })
-      .finally(() => setLoading(false));
+
+    // A reusable function to fetch the data
+    const fetchData = (showLoading) => {
+      if (showLoading) setLoading(true);
+      Promise.all([getWeather(selectedCity), getHistory(selectedCity)])
+        .then(([w, h]) => {
+          setWeather(w);
+          setHistory(
+            h.map((row) => ({
+              time: new Date(row.recorded_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              temperature: row.temperature,
+              humidity: row.humidity,
+            }))
+          );
+        })
+        .finally(() => setLoading(false));
+    };
+
+    // Fetch immediately when city changes (show loading spinner)
+    fetchData(true);
+
+    // Then auto-refresh every 60 seconds (silently, no spinner)
+    const interval = setInterval(() => fetchData(false), 60000);
+
+    // Clean up the timer when city changes or component unmounts
+    return () => clearInterval(interval);
   }, [selectedCity]);
 
   return (
